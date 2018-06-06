@@ -1,0 +1,50 @@
+﻿创建git分支：
+1. master与develop分支：
+   参照git flow的原理，从远程git clone 下master的主分支，然后本地创建develop开发分支，同时与远程remote仓库上也创建develop分支，实现同步
+https://blog.csdn.net/zsm180/article/details/75291260
+2. 在本地从develop分支创建feature分支系列，feature分支不提交到远程仓库上，开发代码只保存在本地仓库，开发测试通过后，与本地develop分支再合并
+   在多人联合开发的场景下，每个人创建一个feature/N分支即可
+
+3.  拉取远程分支并创建本地分支的两种方式：
+    git checkout -b 本地分支名x origin/远程分支名x 
+    git fetch origin 远程分支名x:本地分支名x
+https://blog.csdn.net/zsm180/article/details/75291260
+https://blog.csdn.net/tterminator/article/details/78108550
+
+
+提交命令：
+git add ***： 将更新后的文件提交到暂存区
+git commit：将暂存区的代码提交到仓库区
+
+git push: 将本地仓库中的代码提交到远程仓库中去
+
+git reset -- files:  用来撤销最后一次git add files，你也可以用git reset 撤销所有暂存区域文件。（操作对象是HEAD）
+git checkout -- files:  把文件从暂存区域复制到工作目录，用来丢弃本地修改。（目的是working Directory）
+git checkout HEAD -- files: 回滚到复制最后一次提交。
+
+
+
+代码差异对比
+git diff：
+整个git 管理的项目的存储可以分为工作区，暂存区以及仓库区
+当前开发环境中更新后的文件，只在工作区，处于未跟踪状态，只有git add到暂存区后，才进入git的跟踪管理
+具体git diff的操作，参考：
+https://www.cnblogs.com/lianghe01/p/5846525.html
+
+git diff 比较的是工作区和暂存区的差别
+git diff --cached 比较的是暂存区和版本库的差别
+git diff HEAD 可以查看工作区和版本库的差别
+
+"---"表示变动前的文件，"+++"表示变动后的文件
+--- /dev/null :表示变动之前文件
++++ b/feature_B： 表示变动之后文件
+https://blog.csdn.net/lovezbs/article/details/46492933
+
+代码合并：
+冲突标记含义：
+<<<<<<< 与=======之间的内容是我的修改
+=======与>>>>>>>之间的内容是别人的修改
+
+git merge：
+
+https://blog.csdn.net/u011068702/article/details/48786525
