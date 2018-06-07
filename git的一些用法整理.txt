@@ -48,3 +48,59 @@ https://blog.csdn.net/lovezbs/article/details/46492933
 git merge：
 
 https://blog.csdn.net/u011068702/article/details/48786525
+
+
+关于如何远程与本地，master与dev 以及feature之间进行互相更新同步方法：
+一： remote master上的内容merge 到自己的开发分支上 (上班第一件事)
+1. 切换到master分支
+
+  　　git checkout master
+
+2. 将remote master同步到local master
+
+  　　git pull origin master
+
+3. 切换到的local开发分支
+
+  　　git checkout dev
+
+4. 合并 local master 到 local的开发分支
+
+     　git merge master
+
+5.推送更新到gitlab，使gitlab同步更新显示
+
+   　  git push origin dev
+
+　　
+
+二： 将自己分支的内容merge到remote master上 (下班最后一件事)
+1. 切换到 local 开发分支, 并提交到 local  开发分支
+
+　 git checkout dev_xxx
+
+    git status
+
+ 　git add .
+
+　 git commit -m "@@@"
+
+2. 将remote master 的更新下载到本地
+
+     git checkout master
+
+     git pull origin masterr 
+
+3. 将 local  开发分支merge到 local master
+
+     git merge dev_xxx
+
+4. 将 local master  推送更新到gitlab，使gitlab  remote master同步更新显示
+
+  　git push origin master
+
+5. 将 local dev_xxx  推送更新到gitlab，使gitlab  remote dev_xxx同步更新显示
+
+　  git checkout dev_xxx
+
+      git push origin dev_xxx
