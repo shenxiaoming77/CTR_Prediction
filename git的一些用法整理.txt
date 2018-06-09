@@ -18,10 +18,16 @@ git commit：将暂存区的代码提交到仓库区
 
 git push: 将本地仓库中的代码提交到远程仓库中去
 
-git reset -- files:  用来撤销最后一次git add files，你也可以用git reset 撤销所有暂存区域文件。（操作对象是HEAD）
+
+文件回滚，撤销提交命令：
+git reset --hard  commit_id: 回撤到该ID所对应的某个历史commit 操作
+git reset HEAD <file>:  用来撤销最后一次git add files，你也可以用git reset 撤销所有暂存区域文件。（操作对象是HEAD）
+https://git-scm.com/book/zh/v1/Git-%E5%9F%BA%E7%A1%80-%E6%92%A4%E6%B6%88%E6%93%8D%E4%BD%9C
+https://blog.csdn.net/wh_19910525/article/details/7439915
+
 git checkout -- files:  把文件从暂存区域复制到工作目录，用来丢弃本地修改。（目的是working Directory）
 git checkout HEAD -- files: 回滚到复制最后一次提交。
-
+https://www.cnblogs.com/Calvino/p/5930656.html
 
 
 代码差异对比
@@ -104,3 +110,36 @@ https://blog.csdn.net/u011068702/article/details/48786525
 　  git checkout dev_xxx
 
       git push origin dev_xxx
+
+
+关于本地与远程之间的操作：
+1. 假如是从远程获取更新的内容，并与本地合并，完整的命令为：
+git pull <远程库名> <远程分支名>:<本地分支名> 
+git pull origin develop:develop  
+如果是在当前的分支下进行更新合并：
+git pull origin develop
+
+这里的git pull 命令等同于先做了git fetch ，再做了git merge：
+git fetch origin develop  
+git checkout develop  
+git merge origin/develop 
+
+正常情况下，一般最好先git fetch 获取更新的内容然后再merge，直接git pull会有风险
+
+2. 假如是git 放弃本地修改， 用远程仓库的分支强制覆盖本地分支：
+git fetch --all
+git reset --hard origin/master
+https://blog.csdn.net/iastro/article/details/53645936
+https://blog.csdn.net/baple/article/details/49872765
+
+
+
+git log  查看 当前分支的 提交历史:
+
+git fetch origin branch_xxx：
+从远程master获取到更新后，会返回一个FETCH_HEAD文件，在.git目录下，
+指的是某个branch在服务器上的最新状态，我们可以在本地通过它查看刚取回的更新信息：
+git log -p FETCH_HEAD
+从FETCH_HEAD文件中可以看到返回的信息，包括更新的文件名，更新的作者和时间，
+以及更新的代码，我们可以通过这些信息来判断是否产生冲突，以确定是否将更新merge到当前分支。 
+https://blog.csdn.net/wh_19910525/article/details/7478712
