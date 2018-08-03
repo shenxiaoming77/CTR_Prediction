@@ -2,7 +2,7 @@
 import numpy as np
 import pandas as pd
 import pickle
-
+from  settings import  *
 
 def one_hot_representation(sample, fields_dict, array_length):
     """
@@ -13,7 +13,6 @@ def one_hot_representation(sample, fields_dict, array_length):
     :return: one-hot representation, type of np.array
     """
     array = np.zeros([array_length])
-    idx = []
     for field in fields_dict:
         # get index of array
         if field == 'hour':
@@ -22,9 +21,7 @@ def one_hot_representation(sample, fields_dict, array_length):
             field_value = sample[field]
         ind = fields_dict[field][field_value]
         array[ind] = 1
-        idx.append(ind)
-    return array,idx[:21]
-
+    return array
 
 
 if __name__ == '__main__':
@@ -38,9 +35,9 @@ if __name__ == '__main__':
                    'app_id', 'device_id', 'app_category', 'device_model', 'device_type',
                    'device_conn_type']
 
-    train = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/train.csv',
+    train = pd.read_csv(Root_Dir + 'train.csv',
                         chunksize=100)
-    test = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/test.csv',
+    test = pd.read_csv(Root_Dir + 'test.csv',
                         chunksize=100)
     # loading dicts
     fields_train_dict = {}
@@ -53,9 +50,9 @@ if __name__ == '__main__':
         with open('dicts/'+field+'.pkl','rb') as f:
             fields_test_dict[field] = pickle.load(f)
 
-
     train_array_length = max(fields_train_dict['click'].values()) + 1
     test_array_length = train_array_length - 2
+    print("test_array_length: ", test_array_length)
     # initialize the model
 
     for data in test:
@@ -63,7 +60,6 @@ if __name__ == '__main__':
         # data.to_csv('a.csv',mode='a')
         sample = data.iloc[3,:]
         print(one_hot_representation(sample, fields_test_dict, test_array_length))
-
         break
 
 

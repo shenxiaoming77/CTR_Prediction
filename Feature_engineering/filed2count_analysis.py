@@ -47,12 +47,12 @@ frequency = []
 count = []
 [count.append(x[1]) for x in b]
 
-fig1 = plt.figure(1)
-ax1 = fig1.add_subplot(1,1,1)
-ax1.plot(frequency, count, 'o-', color = 'blue')
-ax1.set_xscale('log')
-ax1.grid(True, which='major', axis='both')
-ax1.set_xlabel('frequency',fontsize = 15)
-ax1.set_ylabel('counts', fontsize = 15)
-ax1.set_title('field of C21', fontsize=15)
-plt.show()
+# fig1 = plt.figure(1)
+# ax1 = fig1.add_subplot(1,1,1)
+# ax1.plot(frequency, count, 'o-', color = 'blue')
+# ax1.set_xscale('log')
+# ax1.grid(True, which='major', axis='both')
+# ax1.set_xlabel('frequency',fontsize = 15)
+# ax1.set_ylabel('counts', fontsize = 15)
+# ax1.set_title('field of C21', fontsize=15)
+# plt.show()

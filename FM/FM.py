@@ -1,15 +1,20 @@
 # coding:utf-8
 import os
 import sys
+
+import tensorflow as tf
+import logging
+import numpy as np
+import argparse
+
+from FM.utilities import *
+from  settings import  *
+
 curPath = os.path.abspath(os.path.dirname(__file__))
 rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
-import tensorflow as tf
-from FM.utilities import *
-import logging
+
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',level=logging.INFO)
-import numpy as np
-import argparse
 
 class FM(object):
     """
@@ -27,10 +32,10 @@ class FM(object):
         self.reg_l1 = config['reg_l1']
         self.reg_l2 = config['reg_l2']
         # num of features
-        self.p = feature_length
+        self.feature_length = feature_length
 
     def add_placeholders(self):
-        self.X = tf.sparse_placeholder('float32', [None, self.p])
+        self.X = tf.sparse_placeholder('float32', [None, self.feature_length])
         self.y = tf.placeholder('int64', [None,])
         self.keep_prob = tf.placeholder('float32')
 
@@ -42,21 +47,19 @@ class FM(object):
         with tf.variable_scope('linear_layer'):
             b = tf.get_variable('bias', shape=[2],
                                 initializer=tf.zeros_initializer())
-            w1 = tf.get_variable('w1', shape=[self.p, 2],
-                                 initializer=tf.truncated_normal_initializer(mean=0,stddev=1e-2))
+            w1 = tf.get_variable('w1', shape=[self.feature_length, 2],
+                                 initializer=tf.truncated_normal_initializer(mean=0, stddev=1e-2))
             # shape of [None, 2]
-            self.linear_terms = tf.add(tf.sparse_tensor_dense_matmul  (self.X, w1), b)
+            self.linear_terms = tf.add(tf.sparse_tensor_dense_matmul(self.X, w1), b)
 
         with tf.variable_scope('interaction_layer'):
-            v = tf.get_variable('v', shape=[self.p, self.k],
+            v = tf.get_variable('v', shape=[self.feature_length, self.k],
                                 initializer=tf.truncated_normal_initializer(mean=0, stddev=0.01))
             # shape of [None, 1]
-            self.interaction_terms = tf.multiply(0.5,
-                                                 tf.reduce_mean(
-                                                     tf.subtract(
-                                                         tf.pow(tf.sparse_tensor_dense_matmul(self.X, v), 2),
-                                                         tf.sparse_tensor_dense_matmul(self.X, tf.pow(v, 2))),
-                                                     1, keep_dims=True))
+            self.interaction_terms = tf.multiply(0.5,tf.reduce_mean(tf.subtract(
+                                                                        tf.pow(tf.sparse_tensor_dense_matmul(self.X, v), 2),
+                                                                        tf.sparse_tensor_dense_matmul(self.X, tf.pow(v, 2))),
+                                                                    1, keep_dims=True))
         # shape of [None, 2]
         self.y_out = tf.add(self.linear_terms, self.interaction_terms)
         self.y_out_prob = tf.nn.softmax(self.y_out)
@@ -107,7 +110,7 @@ def train_model(sess, model, epochs=10, print_every=50):
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('train_logs', sess.graph)
     # get sparse training data
-    with open('../avazu_CTR/train_sparse_data_frac_0.01.pkl', 'rb') as f:
+    with open(Root_Dir + 'train_sparse_data_frac_0.01.pkl', 'rb') as f:
         sparse_data_fraction = pickle.load(f)
     # get number of batches
     num_batches = len(sparse_data_fraction)
@@ -121,8 +124,8 @@ def train_model(sess, model, epochs=10, print_every=50):
             batch_y = np.array(batch_y)
             actual_batch_size = len(batch_y)
             batch_indexes = np.array(sparse_data_fraction[ibatch]['indexes'], dtype=np.int64)
-            batch_shape = np.array([actual_batch_size, feature_length], dtype=np.int64)
-            batch_values = np.ones(len(batch_indexes), dtype=np.float32)
+            batch_shape = np.array([actual_batch_size, feature_length], dtype=np.int64) #size: [512,21]
+            batch_values = np.ones(len(batch_indexes), dtype=np.float32) # length: 512*21
             # create a feed dictionary for this batch
             feed_dict = {model.X: (batch_indexes, batch_values, batch_shape),
                          model.y: batch_y,
@@ -133,10 +136,10 @@ def train_model(sess, model, epochs=10, print_every=50):
                                                                  merged,model.global_step,
                                                                  model.train_op], feed_dict=feed_dict)
             # aggregate performance stats
-            losses.append(loss*actual_batch_size)
+            losses.append(loss * actual_batch_size)
             num_samples += actual_batch_size
             # Record summaries and train.csv-set accuracy
-            train_writer.add_summary(summary, global_step=global_step)
+            train_writer.add_summary(summary, global_step = global_step)
             # print training loss and accuracy
             if global_step % print_every == 0:
                 logging.info("Iteration {0}: with minibatch training loss = {1} and accuracy of {2}"
@@ -149,7 +152,7 @@ def train_model(sess, model, epochs=10, print_every=50):
 def test_model(sess, model, print_every = 50):
     """training model"""
     # get testing data, iterable
-    with open('../avazu_CTR/test_sparse_data_frac_0.01.pkl', 'rb') as f:
+    with open(Root_Dir + 'test_sparse_data_frac_0.01.pkl', 'rb') as f:
         test_sparse_data_fraction = pickle.load(f)
     all_ids = []
     all_clicks = []

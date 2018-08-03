@@ -37,17 +37,19 @@ device_model = []
 device_ip = []
 device_id = []
 
+from  settings import  *
 
-
-train = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/train.csv',chunksize=10000)
+train = pd.read_csv(Root_Dir + 'train.csv',chunksize=10000)
 
 for data in train:
 
     click_v = set(data['click'].values)
     click = click | click_v
 
+
     C1_v = set(data['C1'].values)
     C1 = C1 | C1_v
+
 
     C15_v = set(data['C15'].values)
     C15 = C15 | C15_v
@@ -87,6 +89,7 @@ with open('sets/hour.pkl','wb') as f:
 
 with open('sets/C1.pkl','wb') as f:
     pickle.dump(C1,f)
+
 
 with open('sets/C15.pkl','wb') as f:
     pickle.dump(C15,f)

@@ -6,11 +6,15 @@ rootPath = os.path.split(curPath)[0]
 sys.path.append(rootPath)
 import tensorflow as tf
 import numpy as np
-from FFM.utilities import *
 import math
 import pandas as pd
 import logging
+import  pickle
+
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',level=logging.INFO)
+
+from  settings import  *
+from ffm_tensorflow.utilities import  one_hot_representation
 
 class FFM(object):
     """
@@ -26,7 +30,7 @@ class FFM(object):
         # num of fields
         self.f = config['f']
         # num of features
-        self.p = feature_length
+        self.p = config['feature_length']
         self.lr = config['lr']
         self.batch_size = config['batch_size']
         self.reg_l1 = config['reg_l1']
@@ -58,6 +62,7 @@ class FFM(object):
             self.field_aware_interaction_terms = tf.constant(0, dtype='float32')
             # build dict to find f, key of feature,value of field
             for i in range(self.p):
+                #print(i)
                 for j in range(i+1,self.p):
                     self.field_aware_interaction_terms += tf.multiply(
                         tf.reduce_sum(tf.multiply(v[i,self.feature2field[i]], v[j,self.feature2field[j]])),
@@ -68,10 +73,10 @@ class FFM(object):
         self.y_out_prob = tf.nn.softmax(self.y_out)
 
     def add_loss(self):
-            cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.y, logits=self.y_out)
-            mean_loss = tf.reduce_mean(cross_entropy)
-            self.loss = mean_loss
-            tf.summary.scalar('loss', self.loss)
+        cross_entropy = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=self.y, logits=self.y_out)
+        mean_loss = tf.reduce_mean(cross_entropy)
+        self.loss = mean_loss
+        tf.summary.scalar('loss', self.loss)
 
     def add_accuracy(self):
         # accuracy
@@ -81,6 +86,7 @@ class FFM(object):
         tf.summary.scalar('accuracy', self.accuracy)
 
     def train(self):
+
         # Applies exponential decay to learning rate
         self.global_step = tf.Variable(0, trainable=False)
         # define optimizer
@@ -91,10 +97,15 @@ class FFM(object):
 
     def build_graph(self):
         """build graph for model"""
+        print('add_placeholders')
         self.add_placeholders()
+        print('inference')
         self.inference()
+        print('add_loss')
         self.add_loss()
+        print('add_accuracy')
         self.add_accuracy()
+        print('train...')
         self.train()
 
 def check_restore_parameters(sess, saver):
@@ -106,7 +117,7 @@ def check_restore_parameters(sess, saver):
     else:
         logging.info("Initializing fresh parameters for the my Factorization Machine")
 
-def train_model(sess, model, epochs=10, print_every=500):
+def train_model(sess, model,fields_dict, epochs=10, print_every=500, ):
     """training model"""
     # Merge all the summaries and write them out to train_logs
     merged = tf.summary.merge_all()
@@ -115,7 +126,8 @@ def train_model(sess, model, epochs=10, print_every=500):
         num_samples = 0
         losses = []
         # get training data, iterable
-        train_data = pd.read_csv('../avazu_CTR/train.csv', chunksize=model.batch_size)
+        train_data = pd.read_csv(Root_Dir + 'train.csv',
+                                 chunksize=model.batch_size)
         # batch_size data
         for data in train_data:
             actual_batch_size = len(data)
@@ -123,16 +135,23 @@ def train_model(sess, model, epochs=10, print_every=500):
             batch_y = []
             for i in range(actual_batch_size):
                 sample = data.iloc[i,:]
-                array = one_hot_representation(sample, fields_train_dict, train_array_length)
+                array = one_hot_representation(sample,
+                                               fields_dict,
+                                               train_array_length)
                 batch_X.append(array[:-2])
                 batch_y.append(array[-1])
             batch_X = np.array(batch_X)
             batch_y = np.array(batch_y)
             # create a feed dictionary for this batch
-            feed_dict = {model.X: batch_X, model.y: batch_y, model.keep_prob:1}
-            loss, accuracy,  summary, global_step, _ = sess.run([model.loss, model.accuracy,
-                                                                 merged,model.global_step,
-                                                                 model.train_op], feed_dict=feed_dict)
+            feed_dict = {model.X: batch_X,
+                         model.y: batch_y,
+                         model.keep_prob:1}
+            loss, accuracy, summary, global_step, _ = sess.run([model.loss,
+                                                                 model.accuracy,
+                                                                 merged,
+                                                                 model.global_step,
+                                                                 model.train_op],
+                                                                 feed_dict=feed_dict)
             # aggregate performance stats
             losses.append(loss*actual_batch_size)
 
@@ -153,7 +172,7 @@ def train_model(sess, model, epochs=10, print_every=500):
 def test_model(sess, model, print_every = 50):
     """training model"""
     # get testing data, iterable
-    test_data = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/test.csv',
+    test_data = pd.read_csv(Root_Dir + 'test.csv',
                             chunksize=model.batch_size)
     test_step = 1
     # batch_size data
@@ -198,6 +217,7 @@ if __name__ == '__main__':
     # loading feature2field dict
     with open('feature2field.pkl','rb') as f:
         feature2field = pickle.load(f)
+    print('feature2field length:', len(feature2field))
     # length of representation
     train_array_length = max(fields_dict['click'].values()) + 1
     test_array_length = train_array_length - 2
@@ -211,19 +231,26 @@ if __name__ == '__main__':
     config['f'] = len(fields) - 1
     config['feature2field'] = feature2field
     # get feature length
-    feature_length = test_array_length
+    feature_length = max(fields_dict['click'].values()) - 2
+    print(feature_length)
+    config['feature_length'] = feature_length
+    config['fields_dict'] = fields_dict
     # initialize FFM model
+    print('init FFM instance......')
     model = FFM(config)
     # build graph for model
+    print('start to build tensorflow graph.....')
     model.build_graph()
+    print('Saver initial....')
     saver = tf.train.Saver(max_to_keep=5)
     with tf.Session() as sess:
         # TODO: with every epoches, print training accuracy and validation accuracy
+        print('global_variables_initializer.......s')
         sess.run(tf.global_variables_initializer())
         # restore trained parameters
         check_restore_parameters(sess, saver)
         print('start training...')
-        train_model(sess, model, epochs=10, print_every=50)
+        train_model(sess, model, fields_dict,epochs=10, print_every=50 )
         # print('start validation...')
         # validation_model(sess, model, print_every=100)
         # print('start testing...')

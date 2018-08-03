@@ -2,8 +2,10 @@ import pandas as pd
 import pickle
 from collections import Counter
 
-train = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/train.csv',chunksize=20000)
-test = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/test.csv',chunksize=20000)
+from  settings import  *
+
+train = pd.read_csv(Root_Dir + 'train.csv',chunksize=20000)
+test = pd.read_csv(Root_Dir + 'test.csv',chunksize=20000)
 
 C14 = dict()
 C17 = dict()
@@ -20,6 +22,8 @@ device_ip = dict()
 count = 0
 for data in train:
     C14_list = data['C14'].values
+    print(C14_list)
+    print(Counter(C14_list).items())
     for k,v in Counter(C14_list).items():
         if k in C14.keys():
             C14[k] += v

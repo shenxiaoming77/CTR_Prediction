@@ -79,32 +79,35 @@ with open('field2count/device_model.pkl','rb') as f:
 with open('field2count/device_id.pkl','rb') as f:
     device_id = pickle.load(f)
 
-ind = 0
+index = 0
 for field in direct_encoding_fields:
     # value to one-hot-encoding index dict
     field_dict = {}
-    field_sets = eval(field)
+    field_sets = eval(field)  #eval将字符串格式的field转化为实际的计算表达式，这里就变成了从本地文件打开的文件流变量
+    print(field)
     for value in list(field_sets):
-        field_dict[value] = ind
-        ind += 1
+        field_dict[value] = index
+        index += 1
+        print(index)
     with open('dicts/'+field+'.pkl', 'wb') as f:
         pickle.dump(field_dict, f)
 
 for field in frequency_encoding_fields:
     # value to one-hot-encoding index dict
     field2count = eval(field)
+
     index_rare = None
     for k,count in field2count.items():
         if count < 10:
             if index_rare == None:
-                field_dict[k] = ind
-                index_rare = ind
-                ind += 1
+                field_dict[k] = index
+                index_rare = index
+                index += 1
             else:
                 field_dict[k] = index_rare
         else:
-            field_dict[k] = ind
-            ind += 1
+            field_dict[k] = index
+            index += 1
     with open('dicts/'+field+'.pkl', 'wb') as f:
         pickle.dump(field_dict, f)
 

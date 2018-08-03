@@ -2,9 +2,11 @@
 import pandas as pd
 import numpy as np
 
-ids = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/test.csv')['id'].values
+from  settings import  *
 
-click = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/FM_baseline/FM_FTRL_v1.csv')['click'].values
+ids = pd.read_csv(Root_Dir + 'test.csv')['id'].values
+
+click = pd.read_csv(Root_Dir + '/FM_baseline/FM_FTRL_v1.csv')['click'].values
 
 print(len(ids))
 print(len(click))

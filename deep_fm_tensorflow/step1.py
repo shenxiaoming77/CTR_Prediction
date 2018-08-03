@@ -37,9 +37,9 @@ device_model = []
 device_ip = []
 device_id = []
 
+from  settings import  *
 
-
-train = pd.read_csv('/home/johnso/PycharmProjects/News_recommendation/CTR_prediction/avazu_CTR/train.csv',chunksize=10000)
+train = pd.read_csv(Root_Dir + 'train.csv',chunksize=10000)
 
 for data in train:
 

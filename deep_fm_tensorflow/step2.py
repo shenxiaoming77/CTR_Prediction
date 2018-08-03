@@ -1,5 +1,6 @@
 import numpy as np
 import pickle
+from  settings import  *
 
 direct_encoding_fields = ['hour', 'C1', 'C15', 'C16', 'C18', 'C20',
                           'banner_pos',  'site_category','app_category',
@@ -79,41 +80,31 @@ with open('field2count/device_model.pkl','rb') as f:
 with open('field2count/device_id.pkl','rb') as f:
     device_id = pickle.load(f)
 
-field_dict = {}
-feature2field = {}
-field_index = 0
+
 ind = 0
 for field in direct_encoding_fields:
     # value to one-hot-encoding index dict
+    field_dict = {}
     field_sets = eval(field)
     for value in list(field_sets):
         field_dict[value] = ind
-        feature2field[ind] = field_index
         ind += 1
-    field_index += 1
     with open('dicts/'+field+'.pkl', 'wb') as f:
         pickle.dump(field_dict, f)
 
+
 for field in frequency_encoding_fields:
     # value to one-hot-encoding index dict
+    field_dict = {}
     field2count = eval(field)
-    index_rare = None
+    index_rare = ind
     for k,count in field2count.items():
         if count < 10:
-            if index_rare == None:
-                field_dict[k] = ind
-                feature2field[ind] = field_index
-                index_rare = ind
-                ind += 1
-            else:
-                field_dict[k] = index_rare
-                feature2field[index_rare] = field_index
-
+            field_dict[k] = index_rare
         else:
-            field_dict[k] = ind
-            feature2field[ind] = field_index
+            field_dict[k] = ind + 1
             ind += 1
-    field_index += 1
+
     with open('dicts/'+field+'.pkl', 'wb') as f:
         pickle.dump(field_dict, f)
 
@@ -123,14 +114,8 @@ field_sets = click
 for value in list(field_sets):
     field_dict[value] = ind + 1
     ind += 1
-
 with open('dicts/'+'click'+'.pkl', 'wb') as f:
     pickle.dump(field_dict, f)
-
-
-
-with open('feature2field.pkl', 'wb') as f:
-    pickle.dump(feature2field, f)
 
 
 

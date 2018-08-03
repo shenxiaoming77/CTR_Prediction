@@ -5,6 +5,7 @@ import logging
 from scipy.sparse import coo_matrix
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',level=logging.INFO)
 
+from  settings import  *
 
 def one_hot_representation(sample, fields_dict, isample):
     """
@@ -30,9 +31,12 @@ def train_sparse_data_generate(train_data, fields_dict):
     sparse_data = []
     # batch_index
     ibatch = 0
+
     for data in train_data:
         labels = []
         indexes = []
+        print(data)
+        print('###########################################################')
         for i in range(len(data)):
             sample = data.iloc[i,:]
             click = sample['click']
@@ -49,7 +53,7 @@ def train_sparse_data_generate(train_data, fields_dict):
         ibatch += 1
         if ibatch % 200 == 0:
             logging.info('{}-th batch has finished'.format(ibatch))
-    with open('../avazu_CTR/train_sparse_data_frac_0.01.pkl','wb') as f:
+    with open(Root_Dir + 'train_sparse_data_frac_0.01.pkl','wb') as f:
         pickle.dump(sparse_data, f)
 
 def test_sparse_data_generate(test_data, fields_dict):
@@ -68,7 +72,7 @@ def test_sparse_data_generate(test_data, fields_dict):
         ibatch += 1
         if ibatch % 200 == 0:
             logging.info('{}-th batch has finished'.format(ibatch))
-    with open('../avazu_CTR/test_sparse_data_frac_0.01.pkl','wb') as f:
+    with open(Root_Dir + 'test_sparse_data_frac_0.01.pkl','wb') as f:
         pickle.dump(sparse_data, f)
 
 
@@ -80,15 +84,17 @@ if __name__ == '__main__':
               'app_id', 'app_category', 'device_model', 'device_type', 'device_id',
               'device_conn_type']
     batch_size = 512
-    train = pd.read_csv('../avazu_CTR/train_frac_0.01.csv', chunksize=batch_size)
-    test = pd.read_csv('../avazu_CTR/test.csv', chunksize=batch_size)
+    #train = pd.read_csv(Root_Dir + 'train_frac_0.01.csv', chunksize=batch_size)
+    train = pd.read_csv(Root_Dir + 'train.csv', chunksize = batch_size)
+    test = pd.read_csv(Root_Dir + 'test.csv', chunksize=batch_size)
     # loading dicts
     fields_dict = {}
     for field in fields:
         with open('dicts/'+field+'.pkl','rb') as f:
             fields_dict[field] = pickle.load(f)
 
-    test_sparse_data_generate(test, fields_dict)
+    train_sparse_data_generate(train, fields_dict)
+    #test_sparse_data_generate(test, fields_dict)
 
 
 
