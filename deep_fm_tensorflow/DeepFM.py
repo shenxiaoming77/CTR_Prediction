@@ -44,6 +44,8 @@ class DeepFM(object):
         self.y = tf.placeholder('int64', [None,])
 
         # index of none-zero features
+        #下面的batch_idx 则是用于某一轮的batch 训练数据的idx 集合，大小为:batch_size * field_cnt
+        # 用于inference接口里面DNN模块中抽取V隐向量矩阵的feature_index
         self.feature_index = tf.placeholder('int64', [None, self.field_cnt])
         self.keep_prob = tf.placeholder('float32')
 
@@ -52,7 +54,7 @@ class DeepFM(object):
         forward propagation
         :return: labels for each sample
         """
-        v = tf.Variable(tf.truncated_normal(shape=[self. p, self.k], mean=0, stddev=0.01),dtype='float32')
+        v = tf.Variable(tf.truncated_normal(shape=[self.p, self.k], mean=0, stddev=0.01),dtype='float32')
 
         # Factorization Machine
         with tf.variable_scope('FM'):
@@ -72,6 +74,11 @@ class DeepFM(object):
             self.y_fm = tf.add(self.linear_terms, self.interaction_terms)
 
         # three-hidden-layer neural network, network shape of (200-200-200)
+        #tf.gather: 按feature_index 来抽取子集，在axis=0维度上，按index 抽取若干行数据，行下标可以不连续
+        #tf.reshape: 对矩阵进行变换
+        #feature_index = tf.placeholder('int64', [None, self.field_cnt])
+        #v = tf.Variable(tf.truncated_normal(shape=[self.p, self.k], mean=0, stddev=0.01),dtype='float32')
+
         with tf.variable_scope('DNN',reuse=False):
             # embedding layer
             y_embedding_input = tf.reshape(tf.gather(v, self.feature_index), [-1, self.field_cnt * self.k])
@@ -168,16 +175,26 @@ def train_model(sess, model, epochs=10, print_every=500):
             batch_idx = []
             for i in range(actual_batch_size):
                 sample = data.iloc[i,:]
-                array,idx = one_hot_representation(sample,fields_train_dict, train_array_length)
+                #array 是one-hot编码后的向量，长度为feature_size（one-hot编码特征的数量）
+                #idx则是与array相对应的one-hot编码特征中所有非零特征的索引集合，长度为21，即原始特征的数量
+                #相当于对于一个长度为feature_size的初始零向量array_0，找到field_cnt个原始特征对应的index，对array_0中相应位置设置为1
+                #这样就得到了一个one-hot编码的向量array
+
+                #下面的batch_idx 则是用于某一轮的batch 训练数据的idx 集合，大小为:batch_size * field_cnt
+                # 用于inference接口里面DNN模块中抽取V隐向量矩阵的feature_index
+                array, idx = one_hot_representation(sample,fields_train_dict, train_array_length)
                 batch_X.append(array[:-2])
                 batch_y.append(array[-1])
                 batch_idx.append(idx)
+
             batch_X = np.array(batch_X)
             batch_y = np.array(batch_y)
             batch_idx = np.array(batch_idx)
+
             # create a feed dictionary for this batch
             feed_dict = {model.X: batch_X, model.y: batch_y,
-                         model.feature_inds: batch_idx, model.keep_prob:1}
+                         model.feature_index: batch_idx, model.keep_prob:1}
+
             loss, accuracy,  summary, global_step, _ = sess.run([model.loss,
                                                                  model.accuracy,
                                                                  merged,

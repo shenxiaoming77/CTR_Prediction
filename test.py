@@ -47,36 +47,44 @@
 
 import tensorflow as tf
 
-x=tf.constant([[1,2],[1,2]])
-y=tf.constant([[1,1],[1,2]])
-z=tf.add(x,y)
+# x=tf.constant([[1,2],[1,2]])
+# y=tf.constant([[1,1],[1,2]])
+# z=tf.add(x,y)
+#
+# x1=tf.constant(1)
+# y1=tf.constant(2)
+# z1=tf.add(x1,y1)
+#
+# x2=tf.constant(2)
+# y2=tf.constant([1,2])
+# z2=tf.add(x2,y2)
+#
+# x3=tf.constant([[1,2],[1,2]])
+# y3=tf.constant([[1,2]])
+# z3=tf.add(x3,y3)
+#
+# x4 = tf.truncated_normal(shape=[1, 1], mean=0.0, stddev=1.0, dtype=tf.float32)
+# y4 = tf.truncated_normal(shape=[1, 2], mean= 0.0, stddev=1.0, dtype=tf.float32)
+# z4 = tf.add(x4, y4)
+#
+# with tf.Session() as sess:
+#     z_result,z1_result,z2_result,z3_result, x4, y4, z4_result = sess.run([z,z1,z2,z3, x4, y4, z4])
+#     print('z =\n%s'%(z_result))
+#     print('z1 =%s'%(z1_result))
+#     print('z2 =%s'%(z2_result))
+#     print('z3 =%s'%(z3_result))
+#
+#     print('x4.shape = ', x4.shape)
+#     print('y4.shape = ', y4.shape)
+#
+#     print(x4)
+#     print(y4)
+#     print(z4_result)
 
-x1=tf.constant(1)
-y1=tf.constant(2)
-z1=tf.add(x1,y1)
-
-x2=tf.constant(2)
-y2=tf.constant([1,2])
-z2=tf.add(x2,y2)
-
-x3=tf.constant([[1,2],[1,2]])
-y3=tf.constant([[1,2]])
-z3=tf.add(x3,y3)
-
-x4 = tf.truncated_normal(shape=[1, 1], mean=0.0, stddev=1.0, dtype=tf.float32)
-y4 = tf.truncated_normal(shape=[1, 2], mean= 0.0, stddev=1.0, dtype=tf.float32)
-z4 = tf.add(x4, y4)
-
+data = [[[1, 1, 1], [2, 2, 2]],
+         [[3, 3, 3], [4, 4, 4]],
+         [[5, 5, 5], [6, 6, 6]]]
+gather_data = tf.gather(data, [0, 2])
 with tf.Session() as sess:
-    z_result,z1_result,z2_result,z3_result, x4, y4, z4_result = sess.run([z,z1,z2,z3, x4, y4, z4])
-    print('z =\n%s'%(z_result))
-    print('z1 =%s'%(z1_result))
-    print('z2 =%s'%(z2_result))
-    print('z3 =%s'%(z3_result))
-
-    print('x4.shape = ', x4.shape)
-    print('y4.shape = ', y4.shape)
-
-    print(x4)
-    print(y4)
-    print(z4_result)
+    gather_data = sess.run(gather_data)
+    print(gather_data)
