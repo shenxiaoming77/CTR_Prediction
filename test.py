@@ -81,10 +81,27 @@ import tensorflow as tf
 #     print(y4)
 #     print(z4_result)
 
-data = [[[1, 1, 1], [2, 2, 2]],
-         [[3, 3, 3], [4, 4, 4]],
-         [[5, 5, 5], [6, 6, 6]]]
-gather_data = tf.gather(data, [0, 2])
+# data = [[[1, 1, 1], [2, 2, 2]],
+#          [[3, 3, 3], [4, 4, 4]],
+#          [[5, 5, 5], [6, 6, 6]]]
+# gather_data = tf.gather(data, [[0, 2],[1, 1]])
+# with tf.Session() as sess:
+#     gather_data = sess.run(gather_data)
+#     print(gather_data)
+
+input_data = tf.Variable([[0.6, 0.8], [0.4, 0.6]], dtype=tf.float32)
+output_data = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=[1, 1], logits=input_data)
+output_data_prob = tf.nn.softmax(input_data)
+
+correct_prediction = tf.equal(tf.cast(tf.argmax(input_data, 1), tf.int64), [1, 0])
 with tf.Session() as sess:
-    gather_data = sess.run(gather_data)
-    print(gather_data)
+    sess.run(tf.global_variables_initializer())
+    print(sess.run(output_data))
+    print('output data prob:')
+    print(sess.run(output_data_prob))
+    print(sess.run(output_data_prob[:, -1]))
+    print(sess.run(output_data_prob[:, 1]))
+
+    print('correct prediction:', sess.run(correct_prediction))
+    print(sess.run(tf.cast(correct_prediction, tf.float32)))
+    print(sess.run(tf.argmax(input_data, 1)))

@@ -1,16 +1,17 @@
 # coding:utf-8
 import os
 import sys
-curPath = os.path.abspath(os.path.dirname(__file__))
-rootPath = os.path.split(curPath)[0]
-sys.path.append(rootPath)
 import tensorflow as tf
 import numpy as np
 from  deep_fm_tensorflow.utilities import one_hot_representation
 import math
 import pandas as pd
 import logging
+
 logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s',level=logging.INFO)
+curPath = os.path.abspath(os.path.dirname(__file__))
+rootPath = os.path.split(curPath)[0]
+sys.path.append(rootPath)
 
 from  settings import  *
 import  pickle
@@ -58,9 +59,9 @@ class DeepFM(object):
 
         # Factorization Machine
         with tf.variable_scope('FM'):
-            b = tf.get_variable('bias', shape=[2],
+            b = tf.get_variable('bias_fm', shape=[2],
                                 initializer=tf.zeros_initializer())
-            w1 = tf.get_variable('w1', shape=[self.p, 2],
+            w1 = tf.get_variable('w_fm', shape=[self.p, 2],
                                  initializer=tf.truncated_normal_initializer(mean=0,stddev=1e-2))
             # shape of [None, 2]
             self.linear_terms = tf.add(tf.matmul(self.X, w1), b)
@@ -79,6 +80,27 @@ class DeepFM(object):
         #feature_index = tf.placeholder('int64', [None, self.field_cnt])
         #v = tf.Variable(tf.truncated_normal(shape=[self.p, self.k], mean=0, stddev=0.01),dtype='float32')
 
+        '''
+        data = [[[1, 1, 1], [2, 2, 2]],
+         [[3, 3, 3], [4, 4, 4]],
+         [[5, 5, 5], [6, 6, 6]]]
+
+        index = [[0, 2],[1, 1]]
+        gather_data = tf.gather(data, index)
+
+        其中index的shape为[2, 2]
+        index[0] = [0, 2], 表示抽取data中的第一行和第三行作为子集
+        [[[1, 1, 1], [2, 2, 2]],
+         [[5, 5, 5], [6, 6, 6]]]
+
+        index[1] = [1, 1], 表示抽取data中的第二行和第二行作为子集
+        [[[3, 3, 3], [4, 4, 4]],
+         [[3, 3, 3], [4, 4, 4]]]
+        '''
+
+        #在每次迭代中，feature_index的shape实际为[batch_size, field_cnt]
+        #feature_index中每一元素为idx数组，存储的时某个x样本的21个原始特征值对应的index，因此
+
         with tf.variable_scope('DNN',reuse=False):
             # embedding layer
             y_embedding_input = tf.reshape(tf.gather(v, self.feature_index), [-1, self.field_cnt * self.k])
@@ -91,16 +113,16 @@ class DeepFM(object):
             y_hidden_l1 = tf.nn.relu(tf.matmul(y_embedding_input, w1) + b1)
 
             # second hidden layer
-            w2 = tf.get_variable('w2', shape=[200, 200],
+            w2 = tf.get_variable('w2_dnn', shape=[200, 200],
                                  initializer=tf.truncated_normal_initializer(mean=0,stddev=1e-2))
-            b2 = tf.get_variable('b2', shape=[200],
+            b2 = tf.get_variable('b2_dnn', shape=[200],
                                  initializer=tf.constant_initializer(0.001))
             y_hidden_l2 = tf.nn.relu(tf.matmul(y_hidden_l1, w2) + b2)
 
             # third hidden layer
-            w3 = tf.get_variable('w1', shape=[200, 200],
+            w3 = tf.get_variable('w3_dnn', shape=[200, 200],
                                  initializer=tf.truncated_normal_initializer(mean=0,stddev=1e-2))
-            b3 = tf.get_variable('b1', shape=[200],
+            b3 = tf.get_variable('b3_dnn', shape=[200],
                                  initializer=tf.constant_initializer(0.001))
             y_hidden_l3 = tf.nn.relu(tf.matmul(y_hidden_l2, w3) + b3)
 
@@ -123,8 +145,14 @@ class DeepFM(object):
 
     def add_accuracy(self):
         # accuracy
-        self.correct_prediction = tf.equal(tf.cast(tf.argmax(model.y_out,1), tf.int64), model.y)
+        # 在tf.argmax( , )中有两个参数，第一个参数是矩阵，
+        # 第二个参数是0或者1。0表示的是按列比较返回最大值的索引，1表示按行比较返回最大值的索引
+        # 所以tf.argmax 返回的是最大值的索引，这里self.out 为[None, 2]维矩阵，因此返回的是对每行的两个值比较，
+        # 得到的最大值索引，0或者1， 以此来代表预测的类别是0或者1
+        #self.correct_prediction = tf.equal(tf.cast(tf.argmax(model.y_out,1), tf.int64), model.y)
+        self.correct_prediction = tf.equal(tf.cast(tf.argmax(self.y_out, 1), tf.int64), self.y)
         self.accuracy = tf.reduce_mean(tf.cast(self.correct_prediction, tf.float32))
+
         # add summary to accuracy
         tf.summary.scalar('accuracy', self.accuracy)
 
@@ -132,11 +160,13 @@ class DeepFM(object):
         # Applies exponential decay to learning rate
         self.global_step = tf.Variable(0, trainable=False)
         # define optimizer
-        optimizer = tf.train.FtrlOptimizer(self.lr, l1_regularization_strength=self.reg_l1,
+        optimizer = tf.train.FtrlOptimizer(self.lr, #learningRate
+                                           l1_regularization_strength=self.reg_l1,
                                            l2_regularization_strength=self.reg_l2)
+
         extra_update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
         with tf.control_dependencies(extra_update_ops):
-            self.train_op = optimizer.minimize(self.loss, global_step=self.global_step)
+            self.train_op = optimizer.minimize(self.loss, global_step = self.global_step)
 
     def build_graph(self):
         """build graph for model"""
@@ -147,14 +177,6 @@ class DeepFM(object):
         self.train()
 
 
-def check_restore_parameters(sess, saver):
-    """ Restore the previously trained parameters if there are any. """
-    ckpt = tf.train.get_checkpoint_state("checkpoints")
-    if ckpt and ckpt.model_checkpoint_path:
-        logging.info("Loading parameters for the my CNN architectures...")
-        saver.restore(sess, ckpt.model_checkpoint_path)
-    else:
-        logging.info("Initializing fresh parameters for the my Factorization Machine")
 
 def train_model(sess, model, epochs=10, print_every=500):
     """training model"""
@@ -164,6 +186,8 @@ def train_model(sess, model, epochs=10, print_every=500):
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter('train_logs', sess.graph)
     for e in range(epochs):
+        print('epoch: ', e)
+
         # get training data, iterable
         train_data = pd.read_csv(Root_Dir + 'train.csv',
                                  chunksize=model.batch_size)
@@ -176,12 +200,20 @@ def train_model(sess, model, epochs=10, print_every=500):
             for i in range(actual_batch_size):
                 sample = data.iloc[i,:]
                 #array 是one-hot编码后的向量，长度为feature_size（one-hot编码特征的数量）
-                #idx则是与array相对应的one-hot编码特征中所有非零特征的索引集合，长度为21，即原始特征的数量
+                #idx则是与array相对应的one-hot编码特征中所有非零特征的索引集合，长度为21，里面的值为这21个原始特征对应的索引值，
+                # 大小范围为0 ~ (feature_size-1)
                 #相当于对于一个长度为feature_size的初始零向量array_0，找到field_cnt个原始特征对应的index，对array_0中相应位置设置为1
                 #这样就得到了一个one-hot编码的向量array
 
                 #下面的batch_idx 则是用于某一轮的batch 训练数据的idx 集合，大小为:batch_size * field_cnt
                 # 用于inference接口里面DNN模块中抽取V隐向量矩阵的feature_index
+
+                '''
+                a[-1]    # last item in the array
+                a[-2:]   # last two items in the array
+                a[:-2]   # everything except the last two items
+                '''
+
                 array, idx = one_hot_representation(sample,fields_train_dict, train_array_length)
                 batch_X.append(array[:-2])
                 batch_y.append(array[-1])
@@ -192,8 +224,10 @@ def train_model(sess, model, epochs=10, print_every=500):
             batch_idx = np.array(batch_idx)
 
             # create a feed dictionary for this batch
-            feed_dict = {model.X: batch_X, model.y: batch_y,
-                         model.feature_index: batch_idx, model.keep_prob:1}
+            feed_dict = {model.X: batch_X,
+                         model.y: batch_y,
+                         model.feature_index: batch_idx,
+                         model.keep_prob:1}
 
             loss, accuracy,  summary, global_step, _ = sess.run([model.loss,
                                                                  model.accuracy,
@@ -202,7 +236,7 @@ def train_model(sess, model, epochs=10, print_every=500):
                                                                  model.train_op],
                                                                  feed_dict=feed_dict)
             # aggregate performance stats
-            losses.append(loss*actual_batch_size)
+            losses.append(loss * actual_batch_size)
 
             num_samples += actual_batch_size
             # Record summaries and train.csv-set accuracy
@@ -211,10 +245,10 @@ def train_model(sess, model, epochs=10, print_every=500):
             if global_step % print_every == 0:
                 logging.info("Iteration {0}: with minibatch training loss = {1} and accuracy of {2}"
                              .format(global_step, loss, accuracy))
-                saver.save(sess, "checkpoints/model", global_step=global_step)
+                saver.save(sess, "checkpoints/model", global_step = global_step)
 
         # print loss of one epoch
-        total_loss = np.sum(losses)/num_samples
+        total_loss = np.sum(losses) / num_samples
         print("Epoch {1}, Overall loss = {0:.3g}".format(total_loss, e+1))
 
 def validation_model(sess, model, print_every=50):
@@ -271,39 +305,7 @@ def validation_model(sess, model, print_every=50):
           .format(total_loss,total_correct))
 
 
-def test_model(sess, model, print_every = 50):
-    """training model"""
-    # get testing data, iterable
-    test_data = pd.read_csv(Root_Dir + 'test.csv',
-                            chunksize=model.batch_size)
-    test_step = 1
-    # batch_size data
-    for data in test_data:
-        actual_batch_size = len(data)
-        batch_X = []
-        batch_idx = []
-        for i in range(actual_batch_size):
-            sample = data.iloc[i,:]
-            array,idx = one_hot_representation(sample, fields_test_dict, test_array_length)
-            batch_X.append(array)
-            batch_idx.append(idx)
 
-        batch_X = np.array(batch_X)
-        batch_idx = np.array(batch_idx)
-        # create a feed dictionary for this batch
-        feed_dict = {model.X: batch_X, model.keep_prob:1, model.feature_inds:batch_idx}
-        # shape of [None,2]
-        y_out_prob = sess.run([model.y_out_prob], feed_dict=feed_dict)
-        # write to csv files
-        data['click'] = y_out_prob[0][:,-1]
-        if test_step == 1:
-            data[['id','click']].to_csv('Deep_FM_FTRL_v1.csv', mode='a', index=False, header=True)
-        else:
-            data[['id','click']].to_csv('Deep_FM_FTRL_v1.csv', mode='a', index=False, header=False)
-
-        test_step += 1
-        if test_step % 50 == 0:
-            logging.info("Iteration {0} has finished".format(test_step))
 
 
 
@@ -316,23 +318,14 @@ if __name__ == '__main__':
                     'app_id', 'app_category', 'device_model', 'device_type', 'device_id',
                     'device_conn_type','click']
 
-    fields_test = ['hour', 'C1', 'C14', 'C15', 'C16', 'C17', 'C18', 'C19', 'C20', 'C21',
-                   'banner_pos', 'site_id' ,'site_domain', 'site_category', 'app_domain',
-                   'app_id', 'device_id', 'app_category', 'device_model', 'device_type',
-                   'device_conn_type']
     # loading dicts
     fields_train_dict = {}
     for field in fields_train:
         with open('dicts/'+field+'.pkl','rb') as f:
             fields_train_dict[field] = pickle.load(f)
-    fields_test_dict = {}
-    for field in fields_test:
-        with open('dicts/'+field+'.pkl','rb') as f:
-            fields_test_dict[field] = pickle.load(f)
 
     # length of representation
     train_array_length = max(fields_train_dict['click'].values()) + 1
-    test_array_length = train_array_length - 2
 
     # initialize the model
     config = {}
@@ -343,9 +336,10 @@ if __name__ == '__main__':
     config['k'] = 40
 
     # get feature length
-    feature_length = max(fields_train_dict['click'].values()) - 2
+    feature_length = train_array_length - 2
     config['feature_length'] = feature_length
-    #feature_length = test_array_length
+
+    print('feature length: ', feature_length)
 
     # num of fields
     field_cnt = 21
@@ -362,11 +356,7 @@ if __name__ == '__main__':
     with tf.Session() as sess:
         # TODO: with every epoches, print training accuracy and validation accuracy
         sess.run(tf.global_variables_initializer())
-        # restore trained parameters
-        check_restore_parameters(sess, saver)
         print('start training...')
-        train_model(sess, model, epochs=10, print_every=500)
+        train_model(sess, model, epochs=10, print_every=100)
         # print('start validation...')
         # validation_model(sess, model, print_every=100)
-        # print('start testing...')
-        # test_model(sess, model)
